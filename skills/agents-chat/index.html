@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agents Chat — Transcript Viewer</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/github.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/marked@13.0.3/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/highlight.min.js"></script>
+
+<style>
+  :root {
+    --bg: #fafaf9;
+    --panel: #ffffff;
+    --border: #e5e5e3;
+    --text: #1c1917;
+    --muted: #78716c;
+    --user: #6b7280;
+    --claude: #d97757;
+    --codex: #10a37f;
+    --code-bg: #f5f5f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1917;
+      --panel: #292524;
+      --border: #3f3a36;
+      --text: #f5f5f4;
+      --muted: #a8a29e;
+      --code-bg: #1c1917;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .top h1 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  .top .meta { color: var(--muted); font-size: 13px; flex: 1; min-width: 100px; }
+  .top button, .top label {
+    font: inherit; font-size: 13px;
+    padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text);
+    cursor: pointer;
+  }
+  .top button:hover, .top label:hover { background: var(--border); }
+  .top input[type=file] { display: none; }
+  .top .auto { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+
+  main { max-width: 920px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--muted);
+    background: var(--panel);
+  }
+  .dropzone.drag { border-color: var(--claude); color: var(--text); }
+  .dropzone p { margin: 6px 0; }
+  .dropzone code {
+    background: var(--code-bg);
+    padding: 2px 6px; border-radius: 4px;
+    font-size: 13px;
+  }
+
+  article.msg {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--muted);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 14px 0;
+  }
+  article.msg.user { border-left-color: var(--user); }
+  article.msg.claude { border-left-color: var(--claude); }
+  article.msg.codex { border-left-color: var(--codex); }
+
+  .msg-head {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .badge {
+    display: inline-block;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    color: white;
+  }
+  .badge.user { background: var(--user); }
+  .badge.claude { background: var(--claude); }
+  .badge.codex { background: var(--codex); }
+  .turn { color: var(--muted); font-size: 13px; }
+  .time {
+    color: var(--muted); font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .anchor { margin-left: auto; color: var(--muted); font-size: 12px; text-decoration: none; }
+  .anchor:hover { color: var(--text); }
+
+  .msg-body { word-wrap: break-word; }
+  .msg-body > *:first-child { margin-top: 0; }
+  .msg-body > *:last-child { margin-bottom: 0; }
+  .msg-body p { margin: 8px 0; }
+  .msg-body h1, .msg-body h2, .msg-body h3 { margin: 18px 0 8px; line-height: 1.3; }
+  .msg-body h1 { font-size: 1.3em; }
+  .msg-body h2 { font-size: 1.15em; }
+  .msg-body h3 { font-size: 1.05em; }
+  .msg-body ul, .msg-body ol { padding-left: 22px; }
+  .msg-body li { margin: 3px 0; }
+  .msg-body code {
+    background: var(--code-bg);
+    padding: 1px 5px; border-radius: 4px;
+    font-size: 0.9em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .msg-body pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+  .msg-body pre code {
+    background: transparent;
+    padding: 0;
+    font-size: 0.88em;
+  }
+  .msg-body blockquote {
+    border-left: 3px solid var(--border);
+    padding: 0 0 0 12px;
+    margin: 10px 0;
+    color: var(--muted);
+  }
+  .msg-body table { border-collapse: collapse; margin: 10px 0; }
+  .msg-body th, .msg-body td { border: 1px solid var(--border); padding: 6px 10px; }
+  .msg-body a { color: var(--claude); }
+
+  .done-tag {
+    display: inline-block;
+    background: var(--codex); color: white;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px;
+    margin-left: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  .title-block {
+    text-align: center; padding: 20px 0 12px;
+    color: var(--muted);
+  }
+  .title-block h1 { margin: 0; color: var(--text); }
+  .title-block .when { font-size: 13px; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Agents Chat Viewer</h1>
+  <span class="meta" id="meta">no transcript loaded</span>
+  <button id="openBtn">Open transcript.md</button>
+  <input type="file" id="picker" accept=".md,.markdown,text/markdown,text/plain" style="display:none" />
+  <button id="reload" disabled>Reload</button>
+  <label class="auto">
+    <input type="checkbox" id="auto" />
+    auto-refresh
+  </label>
+</header>
+
+<main id="main">
+  <div class="dropzone" id="dropzone">
+    <p><strong>Drop <code>transcript.md</code> here</strong> or use the <em>Open transcript.md</em> button above.</p>
+    <p>The viewer renders the conversation between Claude and Codex with each agent's turns colored distinctly.</p>
+  </div>
+</main>
+
+<script>
+  marked.setOptions({
+    breaks: false,
+    gfm: true,
+    highlight: function(code, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try { return hljs.highlight(code, { language: lang }).value; } catch (_) {}
+      }
+      try { return hljs.highlightAuto(code).value; } catch (_) { return code; }
+    },
+  });
+
+  const meta = document.getElementById('meta');
+  const picker = document.getElementById('picker');
+  const openBtn = document.getElementById('openBtn');
+  const reloadBtn = document.getElementById('reload');
+  const autoBox = document.getElementById('auto');
+  const main = document.getElementById('main');
+  const dropzone = document.getElementById('dropzone');
+
+  const HAS_FSA = 'showOpenFilePicker' in window;
+  const SERVER_MODE = location.protocol === 'http:' || location.protocol === 'https:';
+  let currentHandle = null;     // FileSystemFileHandle if available — survives file changes
+  let currentFile = null;       // legacy File reference fallback
+  let serverPath = null;        // path to fetch from (server mode)
+  let currentName = '';
+  let lastContent = null;
+  let autoTimer = null;
+
+  openBtn.addEventListener('click', async () => {
+    if (HAS_FSA) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md', '.markdown'] } }],
+          multiple: false,
+        });
+        currentHandle = handle;
+        currentFile = null;
+        currentName = handle.name;
+        await refresh();
+      } catch (err) {
+        if (err.name !== 'AbortError') meta.textContent = 'error: ' + err.message;
+      }
+    } else {
+      picker.click();
+    }
+  });
+
+  picker.addEventListener('change', (e) => {
+    if (e.target.files.length) {
+      currentFile = e.target.files[0];
+      currentHandle = null;
+      currentName = currentFile.name;
+      refresh();
+    }
+  });
+
+  reloadBtn.addEventListener('click', () => refresh(true));
+
+  autoBox.addEventListener('change', () => {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    if (autoBox.checked) autoTimer = setInterval(() => refresh(true), 3000);
+  });
+
+  ['dragenter', 'dragover'].forEach(ev => {
+    document.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave', 'drop'].forEach(ev => {
+    document.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove('drag'); });
+  });
+  document.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    if (!e.dataTransfer.items.length && !e.dataTransfer.files.length) return;
+    // Prefer FileSystemHandle (Chromium) since it survives file modifications
+    if (HAS_FSA && e.dataTransfer.items.length && 'getAsFileSystemHandle' in e.dataTransfer.items[0]) {
+      for (const item of e.dataTransfer.items) {
+        if (item.kind !== 'file') continue;
+        try {
+          const handle = await item.getAsFileSystemHandle();
+          if (handle && handle.kind === 'file') {
+            currentHandle = handle;
+            currentFile = null;
+            currentName = handle.name;
+            await refresh();
+            return;
+          }
+        } catch (_) {}
+      }
+    }
+    if (e.dataTransfer.files.length) {
+      currentFile = e.dataTransfer.files[0];
+      currentHandle = null;
+      currentName = currentFile.name;
+      refresh();
+    }
+  });
+
+  async function refresh(quiet = false) {
+    try {
+      let text;
+      let modeNote = '';
+      if (serverPath) {
+        const r = await fetch(serverPath + '?t=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        text = await r.text();
+      } else if (currentHandle) {
+        const file = await currentHandle.getFile();
+        text = await file.text();
+      } else if (currentFile) {
+        text = await currentFile.text();
+        modeNote = ' · ⚠ legacy mode (may go stale)';
+      } else {
+        return;
+      }
+      reloadBtn.disabled = false;
+      if (quiet && text === lastContent) return;
+      lastContent = text;
+      meta.textContent = `${currentName} · ${(text.length / 1024).toFixed(1)} KB · ${new Date().toLocaleTimeString()}${modeNote}`;
+      render(text);
+    } catch (err) {
+      meta.textContent = `error: ${err.message} — try re-opening the file`;
+      reloadBtn.disabled = true;
+    }
+  }
+
+  // On server mode, fetch transcript.md automatically on load and enable auto-refresh.
+  if (SERVER_MODE) {
+    (async () => {
+      serverPath = '/transcript.md';
+      currentName = 'transcript.md (served)';
+      openBtn.style.display = 'none';
+      const r = await fetch(serverPath, { cache: 'no-store' });
+      if (r.ok) {
+        autoBox.checked = true;
+        autoBox.dispatchEvent(new Event('change'));
+        await refresh();
+      } else {
+        meta.textContent = `server returned ${r.status} for transcript.md — has the orchestrator run yet?`;
+      }
+    })();
+  }
+
+  function parseTranscript(md) {
+    const sections = [];
+
+    // Pull the top title block (everything before first `## `).
+    const firstHeader = md.search(/\n## /);
+    let title = null;
+    let body = md;
+    if (firstHeader > -1) {
+      const head = md.slice(0, firstHeader).trim();
+      body = md.slice(firstHeader + 1); // keep the `## `
+      // Extract `# Title` and italic `_Started ..._`
+      const titleMatch = head.match(/^#\s+(.+)$/m);
+      const startedMatch = head.match(/_Started (.+?)_/);
+      title = {
+        text: titleMatch ? titleMatch[1].trim() : 'Agent Discussion',
+        when: startedMatch ? startedMatch[1].trim() : null,
+      };
+    }
+
+    // Split on `## ` at line start.
+    const parts = body.split(/\n(?=## )/);
+    for (let part of parts) {
+      part = part.trim();
+      if (!part.startsWith('## ')) continue;
+      const nl = part.indexOf('\n');
+      const headerLine = (nl > -1 ? part.slice(3, nl) : part.slice(3)).trim();
+      let content = (nl > -1 ? part.slice(nl + 1) : '').trim();
+      // strip trailing horizontal rule
+      content = content.replace(/\n?-{3,}\s*$/g, '').trim();
+
+      let speaker = 'unknown';
+      let turn = null;
+      if (/^user/i.test(headerLine)) speaker = 'user';
+      else if (/^claude/i.test(headerLine)) speaker = 'claude';
+      else if (/^codex/i.test(headerLine)) speaker = 'codex';
+
+      const turnMatch = headerLine.match(/Turn\s+(\d+)/i);
+      if (turnMatch) turn = parseInt(turnMatch[1], 10);
+
+      // Orchestrator stamps each header with the post time (` — HH:MM`).
+      let time = null;
+      const timeMatch = headerLine.match(/\b(\d{1,2}:\d{2})\b/);
+      if (timeMatch) time = timeMatch[1];
+
+      sections.push({ speaker, turn, time, headerLine, content });
+    }
+
+    return { title, sections };
+  }
+
+  function render(md) {
+    const { title, sections } = parseTranscript(md);
+    const frag = document.createDocumentFragment();
+
+    if (title) {
+      const t = document.createElement('div');
+      t.className = 'title-block';
+      const h = document.createElement('h1');
+      h.textContent = title.text;
+      t.appendChild(h);
+      if (title.when) {
+        const w = document.createElement('div');
+        w.className = 'when';
+        w.textContent = 'Started ' + title.when;
+        t.appendChild(w);
+      }
+      frag.appendChild(t);
+    }
+
+    sections.forEach((s, idx) => {
+      const art = document.createElement('article');
+      art.className = 'msg ' + s.speaker;
+      art.id = `t${s.turn || idx}`;
+
+      const head = document.createElement('div');
+      head.className = 'msg-head';
+
+      const badge = document.createElement('span');
+      badge.className = 'badge ' + s.speaker;
+      badge.textContent = s.speaker.charAt(0).toUpperCase() + s.speaker.slice(1);
+      head.appendChild(badge);
+
+      if (s.turn != null) {
+        const turnEl = document.createElement('span');
+        turnEl.className = 'turn';
+        turnEl.textContent = `Turn ${s.turn}`;
+        head.appendChild(turnEl);
+      } else if (s.speaker === 'user') {
+        const turnEl = document.createElement('span');
+        turnEl.className = 'turn';
+        turnEl.textContent = 'Problem Statement';
+        head.appendChild(turnEl);
+      }
+
+      if (s.time) {
+        const timeEl = document.createElement('span');
+        timeEl.className = 'time';
+        timeEl.textContent = s.time;
+        head.appendChild(timeEl);
+      }
+
+      // [DONE] tag if message ends with [DONE]
+      const trimmed = s.content.trim();
+      if (/\n\[DONE\]\s*$/.test('\n' + trimmed) || trimmed.endsWith('[DONE]')) {
+        const tag = document.createElement('span');
+        tag.className = 'done-tag';
+        tag.textContent = 'DONE';
+        head.appendChild(tag);
+      }
+
+      const anchor = document.createElement('a');
+      anchor.className = 'anchor';
+      anchor.href = `#${art.id}`;
+      anchor.textContent = '#';
+      head.appendChild(anchor);
+
+      art.appendChild(head);
+
+      const body = document.createElement('div');
+      body.className = 'msg-body';
+      // Strip a trailing `[DONE]` line from the rendered body so it shows only as a tag.
+      let bodyMd = s.content.replace(/\n?\[DONE\]\s*$/, '').trim();
+      body.innerHTML = marked.parse(bodyMd);
+      // Re-run highlight.js for code blocks (in case marked highlight option missed any)
+      body.querySelectorAll('pre code').forEach(b => {
+        try { hljs.highlightElement(b); } catch (_) {}
+      });
+      art.appendChild(body);
+
+      frag.appendChild(art);
+    });
+
+    main.innerHTML = '';
+    main.appendChild(frag);
+  }
+</script>
+
+</body>
+</html>

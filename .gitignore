@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# agents-chat runtime artifacts (written into a target repo, never this one)
+peer_message.md
+transcript.md
+transcript.md.bak-*
+plan.md
+.agents_chat_state.json
+.codex-last-message.txt
