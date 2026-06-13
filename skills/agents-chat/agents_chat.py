@@ -386,6 +386,12 @@ def run_claude(prompt: str, cwd: Path, session_id: str | None) -> tuple[str, str
         "--permission-mode", "bypassPermissions",
         "--output-format", "json",
     ]
+    # Pin an explicit model (owner directive 2026-06-13): the inner `claude -p`
+    # otherwise inherits the session default, and a default like
+    # `claude-fable-5[1m]` is not resolvable in a headless invocation
+    # (404 model_not_found), which kills every debate at turn 1. Default to
+    # Opus 4.8; override with AGENTS_CHAT_CLAUDE_MODEL.
+    cmd += ["--model", os.environ.get("AGENTS_CHAT_CLAUDE_MODEL", "claude-opus-4-8")]
     if session_id:
         cmd += ["--resume", session_id]
     cmd.append(prompt)
@@ -403,6 +409,24 @@ def run_claude(prompt: str, cwd: Path, session_id: str | None) -> tuple[str, str
     except json.JSONDecodeError:
         sys.stderr.write(f"\n[{_timestamp()}] [claude] non-JSON stdout:\n{proc.stdout}\n")
         sys.exit(1)
+
+    # `claude -p --output-format json` emits a single result OBJECT by default,
+    # but with `verbose: true` in settings.json (or --verbose) it emits a JSON
+    # ARRAY of every event (init, assistant, ...) with the result event last.
+    # Handle both shapes; previously the array shape crashed with AttributeError.
+    if isinstance(data, list):
+        result_evt = None
+        for evt in reversed(data):
+            if isinstance(evt, dict) and evt.get("type") == "result":
+                result_evt = evt
+                break
+        if result_evt is None:
+            sys.stderr.write(
+                f"\n[{_timestamp()}] [claude] no result event in JSON output "
+                f"(last 2000 chars):\n{proc.stdout[-2000:]}\n--- stderr ---\n{proc.stderr}\n"
+            )
+            sys.exit(1)
+        data = result_evt
 
     text = (data.get("result") or "").strip()
     new_sid = data.get("session_id") or session_id or ""
