@@ -1,0 +1,12 @@
+# --- tmux-agent-status (AI agent monitoring) ---
+# Key bindings (with prefix): S = switcher, o = sidebar, N = next inbox,
+#   W = wait mode, p = park. See repo README for inside-switcher keys.
+set -g @agent-switcher-style "both"   # popup | sidebar | both
+set -g @agent-sidebar-width "42"
+
+# --- TPM plugins ---
+set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'samleeney/tmux-agent-status'
+
+# Initialize TPM (keep this line at the very bottom of tmux.conf)
+run '~/.tmux/plugins/tpm/tpm'
