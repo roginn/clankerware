@@ -92,6 +92,10 @@ Once the script exits:
 
 ## Notes & gotchas
 
+- Default models: inner Claude runs `claude-fable-5` at `--effort high`; Codex runs `gpt-5.6-sol` at
+  `model_reasoning_effort=high` (overriding `~/.codex/config.toml`). Override via env:
+  `AGENTS_CHAT_CLAUDE_MODEL`, `AGENTS_CHAT_CLAUDE_EFFORT`, `AGENTS_CHAT_CODEX_MODEL`,
+  `AGENTS_CHAT_CODEX_EFFORT`. Do not use the `[1m]` model suffix — it 404s in headless `claude -p`.
 - `agents_chat.py` runs the inner Claude with `--permission-mode bypassPermissions` and Codex with
   `--dangerously-bypass-approvals-and-sandbox` so the agents can read/edit freely. Only point it at
   repos where that's acceptable (it's how the tool is normally used).

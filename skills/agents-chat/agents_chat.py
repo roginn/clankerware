@@ -390,8 +390,11 @@ def run_claude(prompt: str, cwd: Path, session_id: str | None) -> tuple[str, str
     # otherwise inherits the session default, and a default like
     # `claude-fable-5[1m]` is not resolvable in a headless invocation
     # (404 model_not_found), which kills every debate at turn 1. Default to
-    # Opus 4.8; override with AGENTS_CHAT_CLAUDE_MODEL.
-    cmd += ["--model", os.environ.get("AGENTS_CHAT_CLAUDE_MODEL", "claude-opus-4-8")]
+    # Fable 5 at high effort (owner directive 2026-07-10; the plain slug —
+    # WITHOUT the [1m] suffix — resolves headless, smoke-tested). Override with
+    # AGENTS_CHAT_CLAUDE_MODEL / AGENTS_CHAT_CLAUDE_EFFORT.
+    cmd += ["--model", os.environ.get("AGENTS_CHAT_CLAUDE_MODEL", "claude-fable-5")]
+    cmd += ["--effort", os.environ.get("AGENTS_CHAT_CLAUDE_EFFORT", "high")]
     if session_id:
         cmd += ["--resume", session_id]
     cmd.append(prompt)
@@ -454,6 +457,11 @@ def run_codex(prompt: str, cwd: Path, session_id: str | None) -> tuple[str, str]
         "--json",                       # emit JSONL events so we can read the session id
         "-o", str(last_msg_file),       # final assistant message written here
     ]
+    # Default to GPT 5.6 Sol at high effort (owner directive 2026-07-10),
+    # overriding the ~/.codex/config.toml defaults. Override with
+    # AGENTS_CHAT_CODEX_MODEL / AGENTS_CHAT_CODEX_EFFORT.
+    base_flags += ["-m", os.environ.get("AGENTS_CHAT_CODEX_MODEL", "gpt-5.6-sol")]
+    base_flags += ["-c", f"model_reasoning_effort={os.environ.get('AGENTS_CHAT_CODEX_EFFORT', 'high')}"]
     if session_id:
         cmd = ["codex", "exec", "resume", session_id, *base_flags, prompt]
     else:
