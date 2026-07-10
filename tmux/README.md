@@ -12,18 +12,22 @@ It is a **tmux plugin** (managed by TPM), **not** a Claude Code plugin. It works
 in any terminal emulator as long as you run tmux — including tmux **inside
 WezTerm**. It does **not** integrate with WezTerm's native (non-tmux) multiplexer.
 
-There are four pieces to put in place:
+There are five pieces to put in place:
 
 1. Prereqs — modern **bash** (≥4) and **fzf** (the switcher uses it).
 2. **TPM** at `~/.tmux/plugins/tpm` and the plugin at `~/.tmux/plugins/tmux-agent-status`.
 3. The plugin block in your **`~/.tmux.conf`** (loads TPM + the plugin + a couple of options).
-4. Four Claude Code **hooks** in `~/.claude/settings.json` so Claude sessions report status.
+4. `session-notify.sh` at **`~/.claude/hooks/`** — pops a macOS banner naming the tmux
+   session when Claude stops or needs input (auto-dismisses; no-op off macOS).
+5. Four Claude Code **hooks** in `~/.claude/settings.json` so Claude sessions report
+   status; the `Stop`/`Notification` events also fire the banner script.
 
 Provided here verbatim:
 
 | File | Where it goes |
 |------|---------------|
 | `tmux.conf.snippet`   | append to `~/.tmux.conf` (the TPM `run` line must end up at the bottom) |
+| `session-notify.sh`   | copy (executable) to `~/.claude/hooks/session-notify.sh` |
 | `settings.hooks.json` | merge its `hooks` key into `~/.claude/settings.json` |
 | `install.sh`          | does all of the above, idempotently |
 
@@ -45,7 +49,8 @@ One command, from this folder:
 ```
 
 It will: brew-install `bash`/`fzf` if missing (macOS), clone TPM + the plugin,
-append `tmux.conf.snippet` to `~/.tmux.conf` (only once), and merge the hooks into
+append `tmux.conf.snippet` to `~/.tmux.conf` (only once), install
+`session-notify.sh` to `~/.claude/hooks/`, and merge the hooks into
 `~/.claude/settings.json` (preserving your other settings and any other hook
 events). If a tmux server is already running it sources the config so bindings go
 live immediately.
@@ -59,9 +64,10 @@ live immediately.
    git clone --depth 1 https://github.com/samleeney/tmux-agent-status ~/.tmux/plugins/tmux-agent-status
    ```
 3. Append `tmux.conf.snippet` to `~/.tmux.conf` (keep `run '~/.tmux/plugins/tpm/tpm'` last).
-4. Merge the `hooks` key from `settings.hooks.json` into `~/.claude/settings.json`,
+4. Copy `session-notify.sh` to `~/.claude/hooks/session-notify.sh` and `chmod +x` it.
+5. Merge the `hooks` key from `settings.hooks.json` into `~/.claude/settings.json`,
    leaving every other key intact.
-5. Start tmux and press **`prefix + I`** to let TPM install the plugins (only
+6. Start tmux and press **`prefix + I`** to let TPM install the plugins (only
    needed if you skipped the direct clones in step 2).
 
 ## Use it
@@ -91,6 +97,9 @@ the hooks existed, won't appear. Workflow: open your terminal → run `tmux` →
 - `tmux list-keys -T prefix | grep tmux-agent-status` should list the `S/o/N/W/p` bindings.
 - `ls ~/.tmux/plugins/tmux-agent-status/hooks/better-hook.sh` should exist and be executable.
 - `python3 -c "import json;json.load(open('$HOME/.claude/settings.json'))"` confirms settings.json is still valid JSON.
+- `~/.claude/hooks/session-notify.sh 'Test'` should pop a macOS banner with the
+  current tmux session name (banners auto-dismiss; if it lingers, set Script
+  Editor's notification style to "Banners" in System Settings → Notifications).
 
 ## Customizing
 

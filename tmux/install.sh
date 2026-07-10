@@ -59,7 +59,18 @@ else
   cat "${SCRIPT_DIR}/tmux.conf.snippet" >> "$TMUX_CONF"
 fi
 
-# 4. Claude Code hooks merged into settings.json (preserves other settings & hook events).
+# 4. macOS notification helper referenced by the Stop/Notification hooks.
+CLAUDE_HOOKS_DIR="${HOME}/.claude/hooks"
+mkdir -p "$CLAUDE_HOOKS_DIR"
+if cmp -s "${SCRIPT_DIR}/session-notify.sh" "${CLAUDE_HOOKS_DIR}/session-notify.sh"; then
+  echo "    session-notify.sh already installed"
+else
+  echo "==> installing session-notify.sh into $CLAUDE_HOOKS_DIR"
+  cp "${SCRIPT_DIR}/session-notify.sh" "${CLAUDE_HOOKS_DIR}/session-notify.sh"
+fi
+chmod +x "${CLAUDE_HOOKS_DIR}/session-notify.sh"
+
+# 5. Claude Code hooks merged into settings.json (preserves other settings & hook events).
 mkdir -p "$(dirname "$SETTINGS")"
 [[ -f "$SETTINGS" ]] || echo '{}' > "$SETTINGS"
 if command -v jq >/dev/null 2>&1; then
@@ -71,7 +82,7 @@ else
   echo "!! jq not found — manually merge the \"hooks\" key from settings.hooks.json into $SETTINGS"
 fi
 
-# 5. Activate immediately if a tmux server is already running.
+# 6. Activate immediately if a tmux server is already running.
 if tmux info >/dev/null 2>&1; then
   echo "==> sourcing tmux config in the running server"
   tmux source-file "$TMUX_CONF" || true

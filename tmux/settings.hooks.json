@@ -26,6 +26,11 @@
           {
             "type": "command",
             "command": "~/.tmux/plugins/tmux-agent-status/hooks/better-hook.sh Stop"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-notify.sh 'Claude stopped' 2>/dev/null || true",
+            "async": true
           }
         ]
       }
@@ -36,6 +41,11 @@
           {
             "type": "command",
             "command": "~/.tmux/plugins/tmux-agent-status/hooks/better-hook.sh Notification"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-notify.sh 'Claude needs input' 2>/dev/null || true",
+            "async": true
           }
         ]
       }
